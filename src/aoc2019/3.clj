@@ -3,6 +3,8 @@
             [clojure.test :as t]
             [aoc2019.utils :refer :all]))
 
+;; !!! https://github.com/elatedpixel/advent-of-code/blob/master/src/advent_2019/day3.clj
+
 (defn line-direction
   [[[ax ay] [bx by]]]
   (if (= ax bx)
