@@ -2,32 +2,30 @@
   (:require [clojure.edn :as edn]
             [aoc2019.utils :refer :all]))
 
-(def ops
-  {1 {:f ADD :length 3}
-   2 {:f MULT :length 3}
-   3 {:f READ :length 1}
-   4 {:f WRITE :length 1}
-   99 {:f EOF :length 0}})
-
-(defn EOF [state] :EOF)
-
 (defn READ
-  [state out]
-  (assoc state out (edn/read-string (read-line))))
+  [state pointer]
+  (let [[_ out] (take 2 (drop pointer state))]
+    [(assoc state out (edn/read-string (read-line))) (+ pointer 2)]))
 
-(defn WRITE
-  [state out]
-  (do
-    (println (get state out))
-    state))
+(defn PRINT
+  [state pointer]
+  (let [[opcode arg1] (take 2 (drop pointer state))
+        value         (first (maybe-dereference-args state opcode [arg1]))]
+    (do
+        (println value)
+        [state (+ pointer 2)])))
 
 (defn ADD
-  [state in1 in2 out]
-  (assoc state out (+ (get state in1) (get state in2))))
+  [state pointer]
+  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    [(assoc state out (apply + args)) (+ pointer 4)]))
 
 (defn MULT
-  [state in1 in2 out]
-  (assoc state out (* (get state in1) (get state in2))))
+  [state pointer]
+  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    [(assoc state out (apply * args)) (+ pointer 4)]))
 
 (defn parse-program
   [s]
@@ -35,36 +33,50 @@
     (map edn/read-string
          (clojure.string/split s #","))))
 
+(defn maybe-dereference-args
+  [state opcode args]
+  (let [flags (get-opcode-flags opcode (count args))]
+    (map (partial dereference-value state) flags args)))
+
+(defn dereference-value
+  [state mode-number val-or-pointer]
+  (let [mode (get [:position :immediate] mode-number)]
+    (if (= :immediate mode)
+      val-or-pointer
+      (get state val-or-pointer))))
+
+(defn get-opcode-flags
+  [opcode argcount]
+  (reverse (zero-pad (drop 2 (reverse (digits opcode))) argcount)))
+
+(defn load-opcode
+  [opcode]
+  (let [ops {1 ADD
+             2 MULT
+             3 READ
+             4 PRINT}]
+    (get ops (mod opcode 100))))
+
+(defn zero-pad
+  "Zero-pads a vector v to the right up to a maximum size n"
+  [v n]
+  (if-let [padding (take (- n (count v)) (repeat 0))]
+    (apply conj (reverse v) padding)))
+
 (defn execute-program
   [program]
-  (loop [pointer 0
-         state program]
-    (let [opcode (get state pointer)
-          {:keys [length f]} (get ops opcode)
-          next-pointer-pos (+ pointer (inc length))
-          next-state (apply (partial f state)
-                            (take length (drop (inc pointer) state)))] ;; move pointer length + opcode
-      (if (= :EOF next-state)
-        state
-        (recur next-pointer-pos next-state)))))
+  (loop [state program
+         pointer 0]
+    (if (= 99 (get state pointer))
+      state
+      (let [opcode (load-opcode (get state pointer))
+            [new-state new-pointer] (opcode state pointer)]
+          (recur new-state new-pointer)))))
 
 (defn run-program-string
   [s]
   (execute-program (parse-program s)))
 
-(def prog (slurp "/Users/duncan/Dropbox/aoc2019/02input.txt"))
-(def prog2 "1,0,0,0,99")
+(def prog (slurp "05input.txt"))
 
-;; part 1
-;; 3895705
-(first (run-program-string prog))
-
-;; part 2
-(let
-    [desired 19690720
-     input (parse-program prog)]
-  (for [x (range 99)
-        y (range 99)]
-    (let [this-input (assoc input 1 x 2 y)]
-      (when (= desired (first (execute-program this-input)))
-        (println (+ y (* 100 x)))))))
+(run-program-string prog)

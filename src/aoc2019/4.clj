@@ -3,14 +3,6 @@
             [clojure.test :as t]
             [aoc2019.utils :refer :all]))
 
-;; https://stackoverflow.com/a/29929434/751089
-(defn digits [n]
-  (->> n
-       (iterate #(quot % 10))
-       (take-while pos?)
-       (mapv #(mod % 10))
-       rseq))
-
 (defn p1-acceptable-password?
   [n]
   (let [dgts (digits n)]
