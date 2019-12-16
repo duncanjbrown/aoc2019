@@ -27,6 +27,39 @@
         args (maybe-dereference-args state opcode [arg1 arg2])]
     [(assoc state out (apply * args)) (+ pointer 4)]))
 
+(defn JUMPIF
+  [state pointer]
+  (let [[opcode arg1 arg2] (take 3 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    (if-not (zero? (first args))
+      [state (second args)]
+      [state (+ 3 pointer)])))
+
+(defn JUMPUNLESS
+  [state pointer]
+  (let [[opcode arg1 arg2] (take 3 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    (if (zero? (first args))
+      [state (second args)]
+      [state (+ 3 pointer)])))
+
+(defn LT
+  [state pointer]
+  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    (if (apply < args)
+      [(assoc state out 1) (+ 4 pointer)]
+      [(assoc state out 0) (+ 4 pointer)])))
+
+(defn EQ
+  [state pointer]
+  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
+        args (maybe-dereference-args state opcode [arg1 arg2])]
+    (if (apply = args)
+      [(assoc state out 1) (+ 4 pointer)]
+      [(assoc state out 0) (+ 4 pointer)])))
+
+
 (defn parse-program
   [s]
   (apply vector
@@ -54,7 +87,11 @@
   (let [ops {1 ADD
              2 MULT
              3 READ
-             4 PRINT}]
+             4 PRINT
+             5 JUMPIF
+             6 JUMPUNLESS
+             7 LT
+             8 EQ}]
     (get ops (mod opcode 100))))
 
 (defn zero-pad
@@ -80,3 +117,6 @@
 (def prog (slurp "05input.txt"))
 
 (run-program-string prog)
+
+;; (run-program-string "3,9,8,9,10,9,4,9,99,-1,8")
+;; (run-program-string "3,9,7,9,10,9,4,9,99,-1,8")
