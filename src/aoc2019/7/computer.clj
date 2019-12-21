@@ -29,16 +29,16 @@
 
 (defn READ
   [input state pointer]
-  (let [[_ out] (take 2 (drop pointer state))]
-    (println "READING")
-    [(assoc state out (<!! input)) (+ pointer 2)]))
+  (let [[_ out] (take 2 (drop pointer state))
+         val (<!! input)]
+    [(assoc state out val) (+ pointer 2)]))
 
-(defn PRINT
-  [state pointer]
+(defn WRITE
+  [output state pointer]
   (let [[opcode arg1] (take 2 (drop pointer state))
          value         (first (maybe-dereference-args state opcode [arg1]))]
     (do
-      (println value)
+      (>!! output value)
       [state (+ pointer 2)])))
 
 (defn ADD
@@ -92,36 +92,27 @@
       (clojure.string/split s #","))))
 
 (defn execute-program
-  [program]
+  [program output]
   (let [input (chan)
         ops {1 ADD
              2 MULT
              3 (partial READ input)
-             4 PRINT
+             4 (partial WRITE output)
              5 JUMPIF
              6 JUMPUNLESS
              7 LT
-             8 EQ}]
+              8 EQ}]
     (go-loop [state program
               pointer 0]
         (if (= 99 (get state pointer))
           (do (close! input)
-              (println "Halted.")
+              (close! output)
               state)
           (let [opcode (get ops (mod (get state pointer) 100))
-                  [new-state new-pointer] (opcode state pointer)]
+                [new-state new-pointer] (opcode state pointer)]
               (recur new-state new-pointer))))
     input))
 
 (defn run-program-string
-  [s]
-  (execute-program (parse-program s)))
-
-(comment
-  (def prog (slurp "05input.txt"))
-
-  (let [input (run-program-string prog)]
-    (>!! input 1))
-
-  (run-program-string "3,9,8,9,10,9,4,9,99,-1,8")
-  (run-program-string "3,9,7,9,10,9,4,9,99,-1,8"))
+  [s output]
+  (execute-program (parse-program s) output))
