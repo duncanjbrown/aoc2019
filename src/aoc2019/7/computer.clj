@@ -92,27 +92,27 @@
       (clojure.string/split s #","))))
 
 (defn execute-program
-  [program output]
-  (let [input (chan)
-        ops {1 ADD
+  [program output input]
+  (let [ops {1 ADD
              2 MULT
              3 (partial READ input)
              4 (partial WRITE output)
              5 JUMPIF
              6 JUMPUNLESS
              7 LT
-              8 EQ}]
+             8 EQ}]
     (go-loop [state program
-              pointer 0]
-        (if (= 99 (get state pointer))
-          (do (close! input)
-              (close! output)
-              state)
-          (let [opcode (get ops (mod (get state pointer) 100))
-                [new-state new-pointer] (opcode state pointer)]
-              (recur new-state new-pointer))))
+               pointer 0]
+      (if (= 99 (get state pointer))
+        (do
+          (close! input)
+          (close! output)
+          state)
+        (let [opcode (get ops (mod (get state pointer) 100))
+              [new-state new-pointer] (opcode state pointer)]
+          (recur new-state new-pointer))))
     input))
 
 (defn run-program-string
-  [s output]
-  (execute-program (parse-program s) output))
+  [s output input]
+  (execute-program (parse-program s) output input))
