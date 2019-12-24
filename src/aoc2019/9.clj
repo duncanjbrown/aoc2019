@@ -13,14 +13,14 @@
           :else (get state val-or-pointer))))
 
 (defn zero-pad
-  "Zero-pads a vector v to the left up to a maximum size n"
+  "Zero-pads a vector v to the right up to a maximum size n"
   [v n]
   (if-let [padding (take (- n (count v)) (repeat 0))]
-    (apply conj (reverse v) padding)))
+    (vec (reverse (apply conj (reverse v) padding)))))
 
 (defn get-opcode-flags
   [opcode argcount]
-  (reverse (zero-pad (drop 2 (reverse (digits opcode))) argcount)))
+  (zero-pad (drop 2 (reverse (digits opcode))) argcount))
 
 (defn maybe-dereference-args
   [state relbase opcode args]
