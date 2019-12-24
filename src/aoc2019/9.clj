@@ -29,13 +29,16 @@
 
 (defn READ
   [input state pointer relbase]
-  (let [[_ out] (take 2 (drop pointer state))
-         val (<!! input)]
-    [(assoc state out val) (+ pointer 2) relbase]))
+  (let [[opcode arg1] (take 2 (drop pointer state))
+        [out-addr]    (maybe-dereference-args state relbase opcode [arg1])
+        val (<!! input)]
+    (println (str "READING: " val " TO: " out-addr))
+    [(assoc state out-addr val) (+ pointer 2) relbase]))
 
 (defn WRITE
   [output state pointer relbase]
   (let [[opcode arg1] (take 2 (drop pointer state))
+        _ (println "WRITE")
         [value]       (maybe-dereference-args state relbase opcode [arg1])]
     (>!! output value)
     [state (+ pointer 2) relbase]))
@@ -49,7 +52,7 @@
 (defn MULT
   [state pointer relbase]
   (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
+        args (maybe-dereference-args state relbase opcode [arg1 arg2])]
     [(assoc state out (apply * args)) (+ pointer 4) relbase]))
 
 (defn JUMPIF
@@ -87,7 +90,7 @@
 (defn SETRELBASE
   [state pointer relbase]
   (let [[opcode arg1] (take 2 (drop pointer state))
-        [change] (maybe-dereference-args state relbase opcode [arg1])]
+         [change] (maybe-dereference-args state relbase opcode [arg1])]
     [state (+ 2 pointer) (+ relbase change)]))
 
 (defn parse-program
@@ -107,7 +110,7 @@
              7 LT
              8 EQ
              9 SETRELBASE}]
-    (go-loop [state (zero-pad program 256)
+    (go-loop [state (zero-pad program 2048)
               pointer 0
               relbase 0]
       (if (= 99 (get state pointer))
@@ -123,3 +126,20 @@
 (defn run-program-string
   [s output input]
   (execute-program (parse-program s) output input))
+
+(defn run-program
+  [program inputs]
+  (let [input (chan)
+        output (chan)]
+    (go-loop [remaining-inputs inputs]
+      (if-let [next-input (first remaining-inputs)]
+        (do
+            (>! input next-input)
+            (recur (drop 1 inputs)))
+        (close! input)))
+    (run-program-string program output input)
+    (<!! (a/into [] output))))
+
+(comment
+  (def input (slurp "day09.txt"))
+  (run-program input [1]))

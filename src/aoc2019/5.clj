@@ -2,6 +2,28 @@
   (:require [clojure.edn :as edn]
             [aoc2019.utils :refer :all]))
 
+(defn zero-pad
+  "Zero-pads a vector v to the right up to a maximum size n"
+  [v n]
+  (if-let [padding (take (- n (count v)) (repeat 0))]
+    (apply conj (reverse v) padding)))
+
+(defn get-opcode-flags
+  [opcode argcount]
+  (reverse (zero-pad (drop 2 (reverse (digits opcode))) argcount)))
+
+(defn dereference-value
+  [state mode-number val-or-pointer]
+  (let [mode (get [:position :immediate] mode-number)]
+    (if (= :immediate mode)
+      val-or-pointer
+      (get state val-or-pointer))))
+
+(defn maybe-dereference-args
+  [state opcode args]
+  (let [flags (get-opcode-flags opcode (count args))]
+    (map (partial dereference-value state) flags args)))
+
 (defn READ
   [state pointer]
   (let [[_ out] (take 2 (drop pointer state))]
@@ -66,22 +88,6 @@
     (map edn/read-string
          (clojure.string/split s #","))))
 
-(defn maybe-dereference-args
-  [state opcode args]
-  (let [flags (get-opcode-flags opcode (count args))]
-    (map (partial dereference-value state) flags args)))
-
-(defn dereference-value
-  [state mode-number val-or-pointer]
-  (let [mode (get [:position :immediate] mode-number)]
-    (if (= :immediate mode)
-      val-or-pointer
-      (get state val-or-pointer))))
-
-(defn get-opcode-flags
-  [opcode argcount]
-  (reverse (zero-pad (drop 2 (reverse (digits opcode))) argcount)))
-
 (defn load-opcode
   [opcode]
   (let [ops {1 ADD
@@ -93,12 +99,6 @@
              7 LT
              8 EQ}]
     (get ops (mod opcode 100))))
-
-(defn zero-pad
-  "Zero-pads a vector v to the right up to a maximum size n"
-  [v n]
-  (if-let [padding (take (- n (count v)) (repeat 0))]
-    (apply conj (reverse v) padding)))
 
 (defn execute-program
   [program]
