@@ -107,7 +107,7 @@
              7 LT
              8 EQ
              9 SETRELBASE}]
-    (go-loop [state program
+    (go-loop [state (zero-pad program 256)
               pointer 0
               relbase 0]
       (if (= 99 (get state pointer))
