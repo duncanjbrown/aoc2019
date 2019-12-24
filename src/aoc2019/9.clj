@@ -9,7 +9,7 @@
   [state relbase mode-number val-or-pointer]
   (let [mode (get [:position :immediate :relative] mode-number)]
     (cond (= :immediate mode) val-or-pointer
-          (= :relative mode) (+ relbase (get state val-or-pointer))
+          (= :relative mode) (get state (+ relbase val-or-pointer))
           :else (get state val-or-pointer))))
 
 (defn zero-pad
