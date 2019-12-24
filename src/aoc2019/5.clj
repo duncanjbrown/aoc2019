@@ -114,9 +114,10 @@
   [s]
   (execute-program (parse-program s)))
 
-(def prog (slurp "05input.txt"))
+(comment
+    (def prog (slurp "05input.txt"))
 
-(run-program-string prog)
+    (run-program-string prog))
 
 ;; (run-program-string "3,9,8,9,10,9,4,9,99,-1,8")
 ;; (run-program-string "3,9,7,9,10,9,4,9,99,-1,8")

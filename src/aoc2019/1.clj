@@ -8,16 +8,6 @@
       (quot 3)
       (- 2)))
 
-(->> (read-file "/Users/duncan/Dropbox/aoc2019/0101input")
-     (map edn/read-string)
-     (map fuel-required)
-     (reduce +))
-
-(->> (read-file "/Users/duncan/Dropbox/aoc2019/0101input")
-     (map edn/read-string)
-     (map fuel-required-recursive)
-     (reduce +))
-
 (defn fuel-required-recursive
   [mass]
   (let [next-fuel (fuel-required mass)]
@@ -25,4 +15,16 @@
       0
       (+ next-fuel (fuel-required-recursive next-fuel)))))
 
-(fuel-required-recursive 100756)
+(defn part1
+  []
+  (->> (read-file "/Users/duncan/Dropbox/aoc2019/0101input")
+     (map edn/read-string)
+     (map fuel-required)
+     (reduce +)))
+
+(defn part2
+  []
+  (->> (read-file "/Users/duncan/Dropbox/aoc2019/0101input")
+      (map edn/read-string)
+      (map fuel-required-recursive)
+      (reduce +)))

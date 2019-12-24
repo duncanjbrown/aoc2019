@@ -22,15 +22,11 @@
        (seq [to])
        (conj (build-path paths next-orbit to) next-orbit)))))
 
-(def adj-list (-> (parse-input) input->adj-list))
-
 (defn part1
   [adj-list]
   (let [nodes (keys adj-list)]
     (reduce (fn [acc nxt]
               (+ acc (count (build-path adj-list nxt)))) 0 nodes)))
-
-(part1 adj-list)
 
 (defn part2
   [adj-list]
@@ -41,4 +37,7 @@
         isec (first (drop-while (fn [x] (not-any? #(= x %) san-to-com)) you-to-com))]
    (reduce + (map count [(build-path adj-list origin isec) (build-path adj-list target isec)]))))
 
-(part2 adj-list)
+(comment
+    (def adj-list (-> (parse-input) input->adj-list))
+    (part1 adj-list)
+    (part2 adj-list))

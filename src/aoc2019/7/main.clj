@@ -44,4 +44,5 @@
   (let [numbers [5 6 7 8 9]]
     (apply max (map #(apply compute-output-signal %) (permutations numbers)))))
 
-(permute)
+(comment
+    (permute))

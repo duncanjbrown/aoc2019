@@ -11,6 +11,16 @@
     :v
     :h))
 
+(defn line-contains?
+  [[x y] line]
+  (if (= :v (line-direction line))
+    (let [[[ax ay] [_ by]] (sort-by second line)]
+      (and (= x ax)
+           (<= ay y by)))
+    (let [[[ax ay] [bx _]] (sort-by first line)]
+      (and (= y ay)
+           (<= ax x bx)))))
+
 (defn find-intersection
   [line1 line2]
   (if-not (= (line-direction line1) (line-direction line2))
@@ -68,16 +78,6 @@
         point-before-intersection (second (last lines-until-intersection))]
     (+ (path-length lines-until-intersection)
        (manhattan-distance point-before-intersection intersection))))
-
-(defn line-contains?
-  [[x y] line]
-  (if (= :v (line-direction line))
-    (let [[[ax ay] [_ by]] (sort-by second line)]
-      (and (= x ax)
-           (<= ay y by)))
-    (let [[[ax ay] [bx _]] (sort-by first line)]
-      (and (= y ay)
-           (<= ax x bx)))))
 
 (defn part1
   [input1 input2]

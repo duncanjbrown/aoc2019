@@ -19,5 +19,6 @@
          (some #(= (count %) 2) groups)
          (apply <= dgts))))
 
-(count (filter p1-acceptable-password? (range 248345 746315)))
-(count (filter p2-acceptable-password? (range 248345 746315)))
+(comment
+    (count (filter p1-acceptable-password? (range 248345 746315)))
+    (count (filter p2-acceptable-password? (range 248345 746315))))
