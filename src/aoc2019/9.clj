@@ -102,7 +102,7 @@
              7 (cmp <)
              8 (cmp =)
              9 setrelbase}]
-    (go-loop [state (zero-pad program 256)
+    (go-loop [state (zero-pad program 2048)
               pointer 0
               relbase 0]
       (if (= 99 (get state pointer))
@@ -118,3 +118,21 @@
 (defn run-program-string
   [s output input]
   (execute-program (parse-program s) output input))
+
+(defn run-program
+  [program inputs]
+  (let [input (chan)
+        output (chan)]
+    (go-loop [remaining-inputs inputs]
+      (if-let [next-input (first remaining-inputs)]
+        (do
+            (>! input next-input)
+            (recur (drop 1 inputs)))
+        (close! input)))
+    (run-program-string program output input)
+    (<!! (a/into [] output))))
+
+(comment
+  (def prog (slurp "day09.txt"))
+  (run-program prog [1])
+  (run-program prog [2]))
