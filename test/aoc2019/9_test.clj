@@ -30,6 +30,17 @@
       (is (= [0] (run-program prog [0])))
       (is (= [1] (run-program prog [999]))))))
 
+(deftest test-prepare-args
+  (testing "position mode"
+    (let [state [2 2 1 3]]
+      (is (= [1 2 3] (sut/prepare-args 2 [2 1 3] [:read :read :write] state 0)))))
+  (testing "immediate mode"
+    (let [state [1002 2 10 3]]
+      (is (= [10 10 3] (sut/prepare-args 1002 [2 10 3] [:read :read :write] state 0)))))
+  (testing "relative mode"
+    (let [state [2002 2 0 3]]
+      (is (= [0 2002 3] (sut/prepare-args 2002 [2 0 3] [:read :read :write] state 0))))))
+
 (deftest relative-mode
   (testing "relative base is 0"
     (is (zero? (sut/dereference-value [0 1 2 3 4] 0 2 0))))

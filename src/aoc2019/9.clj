@@ -5,13 +5,6 @@
              :refer [>! <! >!! <!! go chan close! go-loop]]
             [aoc2019.utils :refer :all]))
 
-(defn dereference-value
-  [state relbase mode-number val-or-pointer]
-  (let [mode (get [:position :immediate :relative] mode-number)]
-    (cond (= :immediate mode) val-or-pointer
-          (= :relative mode) (get state (+ relbase val-or-pointer))
-          :else (get state val-or-pointer))))
-
 (defn zero-pad
   "Zero-pads a vector v to the right up to a maximum size n"
   [v n]
@@ -22,73 +15,75 @@
   [opcode argcount]
   (zero-pad (drop 2 (reverse (digits opcode))) argcount))
 
-(defn maybe-dereference-args
-  [state relbase opcode args]
-  (let [flags (get-opcode-flags opcode (count args))]
-    (map (partial dereference-value state relbase) flags args)))
+(defn prepare-args
+  [opcode args argtypes state relbase]
+  (map (fn [arg type mode-number]
+         (let [mode (get [:position :immediate :relative] mode-number)]
+           (if (= :read type)
+              (cond
+                 (= :immediate mode) arg
+                 (= :relative mode) (get state (+ relbase arg))
+                 (= :position mode) (get state arg))
+              (cond
+                 (= :relative mode) (+ relbase arg)
+                 (= :position mode) arg))))
+       args
+       argtypes
+       (get-opcode-flags opcode (count args))))
 
-(defn READ
+(defn io-read
   [input state pointer relbase]
-  (let [[_ out] (take 2 (drop pointer state))
-         val (<!! input)]
+  (let [argtypes [:write]
+        [opcode & args] (take 2 (drop pointer state))
+        [out] (prepare-args opcode args argtypes state relbase)
+        val (<!! input)]
     [(assoc state out val) (+ pointer 2) relbase]))
 
-(defn WRITE
+(defn io-write
   [output state pointer relbase]
-  (let [[opcode arg1] (take 2 (drop pointer state))
-        [value]       (maybe-dereference-args state relbase opcode [arg1])]
-    (>!! output value)
+  (let [argtypes [:read]
+        [opcode & args] (take 2 (drop pointer state))
+        [arg1] (prepare-args opcode args argtypes state relbase)]
+    (>!! output arg1)
     [state (+ pointer 2) relbase]))
 
-(defn ADD
-  [state pointer relbase]
-  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    [(assoc state out (apply + args)) (+ pointer 4) relbase]))
+(defn calculate
+  [f]
+  (fn
+    [state pointer relbase]
+    (let [argtypes [:read :read :write]
+          [opcode & args] (take 4 (drop pointer state))
+          [arg1 arg2 out] (prepare-args opcode args argtypes state relbase)]
+        [(assoc state out (f arg1 arg2)) (+ pointer 4) relbase])))
 
-(defn MULT
-  [state pointer relbase]
-  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    [(assoc state out (apply * args)) (+ pointer 4) relbase]))
+(defn jump
+  [pred]
+  (fn
+    [state pointer relbase]
+    (let [argtypes [:read :read]
+          [opcode & args] (take 3 (drop pointer state))
+          [arg1 arg2] (prepare-args opcode args argtypes state relbase)]
+      (if (pred arg1)
+        [state arg2 relbase]
+        [state (+ 3 pointer) relbase]))))
 
-(defn JUMPIF
-  [state pointer relbase]
-  (let [[opcode arg1 arg2] (take 3 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    (if-not (zero? (first args))
-      [state (second args) relbase]
-      [state (+ 3 pointer) relbase])))
+(defn cmp
+  [pred]
+  (fn
+    [state pointer relbase]
+    (let [argtypes [:read :read :write]
+          [opcode & args] (take 4 (drop pointer state))
+          [arg1 arg2 out] (prepare-args opcode args argtypes state relbase)]
+      (if (pred arg1 arg2)
+        [(assoc state out 1) (+ 4 pointer) relbase]
+        [(assoc state out 0) (+ 4 pointer) relbase]))))
 
-(defn JUMPUNLESS
+(defn setrelbase
   [state pointer relbase]
-  (let [[opcode arg1 arg2] (take 3 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    (if (zero? (first args))
-      [state (second args) relbase]
-      [state (+ 3 pointer) relbase])))
-
-(defn LT
-  [state pointer relbase]
-  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    (if (apply < args)
-      [(assoc state out 1) (+ 4 pointer) relbase]
-      [(assoc state out 0) (+ 4 pointer) relbase])))
-
-(defn EQ
-  [state pointer relbase]
-  (let [[opcode arg1 arg2 out] (take 4 (drop pointer state))
-         args (maybe-dereference-args state relbase opcode [arg1 arg2])]
-    (if (apply = args)
-      [(assoc state out 1) (+ 4 pointer) relbase]
-      [(assoc state out 0) (+ 4 pointer) relbase])))
-
-(defn SETRELBASE
-  [state pointer relbase]
-  (let [[opcode arg1] (take 2 (drop pointer state))
-        [change] (maybe-dereference-args state relbase opcode [arg1])]
-    [state (+ 2 pointer) (+ relbase change)]))
+  (let [argtypes [:read]
+        [opcode & args] (take 2 (drop pointer state))
+        [arg1] (prepare-args opcode args argtypes state relbase)]
+    [state (+ 2 pointer) (+ relbase arg1)]))
 
 (defn parse-program
   [s]
@@ -98,15 +93,15 @@
 
 (defn execute-program
   [program output input]
-  (let [ops {1 ADD
-             2 MULT
-             3 (partial READ input)
-             4 (partial WRITE output)
-             5 JUMPIF
-             6 JUMPUNLESS
-             7 LT
-             8 EQ
-             9 SETRELBASE}]
+  (let [ops {1 (calculate +)
+             2 (calculate *)
+             3 (partial io-read input)
+             4 (partial io-write output)
+             5 (jump (complement zero?))
+             6 (jump zero?)
+             7 (cmp <)
+             8 (cmp =)
+             9 setrelbase}]
     (go-loop [state (zero-pad program 256)
               pointer 0
               relbase 0]
