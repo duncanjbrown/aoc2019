@@ -5,45 +5,33 @@
              :refer [>! <! >!! <!! go chan close! go-loop]]
             [aoc2019.utils :refer :all]))
 
-(defn zero-pad
-  "Zero-pads a vector v to the right up to a maximum size n"
-  [v n]
-  (if-let [padding (take (- n (count v)) (repeat 0))]
-    (vec (reverse (apply conj (reverse v) padding)))))
-
-(defn get-opcode-flags
-  [opcode argcount]
-  (zero-pad (drop 2 (reverse (digits opcode))) argcount))
-
 (defn prepare-args
-  [opcode args argtypes state relbase]
-  (map (fn [arg type mode-number]
-         (let [mode (get [:position :immediate :relative] mode-number)]
-           (if (= :read type)
-              (cond
-                 (= :immediate mode) arg
-                 (= :relative mode) (get state (+ relbase arg))
-                 (= :position mode) (get state arg))
-              (cond
-                 (= :relative mode) (+ relbase arg)
-                 (= :position mode) arg))))
-       args
-       argtypes
-       (get-opcode-flags opcode (count args))))
+  [argtypes state pointer relbase]
+  (let [read-n (+ 1 (count argtypes))
+        [opcode & args] (take read-n (drop pointer state))
+        modes (zero-pad (drop 2 (reverse (digits opcode))) (count argtypes))]
+    (map (fn [arg type mode-number]
+            (let [mode (get [:position :immediate :relative] mode-number)]
+                (if (= :read type)
+                    (cond
+                        (= :immediate mode) arg
+                        (= :relative mode) (get state (+ relbase arg))
+                        (= :position mode) (get state arg))
+                    (cond
+                        (= :relative mode) (+ relbase arg)
+                        (= :position mode) arg))))
+        args
+        argtypes
+        modes)))
 
 (defn io-read
   [input state pointer relbase]
-  (let [argtypes [:write]
-        [opcode & args] (take 2 (drop pointer state))
-        [out] (prepare-args opcode args argtypes state relbase)
-        val (<!! input)]
-    [(assoc state out val) (+ pointer 2) relbase]))
+  (let [[out] (prepare-args [:write] state pointer relbase)]
+    [(assoc state out (<!! input)) (+ pointer 2) relbase]))
 
 (defn io-write
   [output state pointer relbase]
-  (let [argtypes [:read]
-        [opcode & args] (take 2 (drop pointer state))
-        [arg1] (prepare-args opcode args argtypes state relbase)]
+  (let [[arg1] (prepare-args [:read] state pointer relbase)]
     (>!! output arg1)
     [state (+ pointer 2) relbase]))
 
@@ -51,18 +39,14 @@
   [f]
   (fn
     [state pointer relbase]
-    (let [argtypes [:read :read :write]
-          [opcode & args] (take 4 (drop pointer state))
-          [arg1 arg2 out] (prepare-args opcode args argtypes state relbase)]
+    (let [[arg1 arg2 out] (prepare-args [:read :read :write] state pointer relbase)]
         [(assoc state out (f arg1 arg2)) (+ pointer 4) relbase])))
 
 (defn jump
   [pred]
   (fn
     [state pointer relbase]
-    (let [argtypes [:read :read]
-          [opcode & args] (take 3 (drop pointer state))
-          [arg1 arg2] (prepare-args opcode args argtypes state relbase)]
+    (let [[arg1 arg2] (prepare-args [:read :read] state pointer relbase)]
       (if (pred arg1)
         [state arg2 relbase]
         [state (+ 3 pointer) relbase]))))
@@ -71,25 +55,15 @@
   [pred]
   (fn
     [state pointer relbase]
-    (let [argtypes [:read :read :write]
-          [opcode & args] (take 4 (drop pointer state))
-          [arg1 arg2 out] (prepare-args opcode args argtypes state relbase)]
+    (let [[arg1 arg2 out] (prepare-args [:read :read :write] state pointer relbase)]
       (if (pred arg1 arg2)
         [(assoc state out 1) (+ 4 pointer) relbase]
         [(assoc state out 0) (+ 4 pointer) relbase]))))
 
 (defn setrelbase
   [state pointer relbase]
-  (let [argtypes [:read]
-        [opcode & args] (take 2 (drop pointer state))
-        [arg1] (prepare-args opcode args argtypes state relbase)]
+  (let [[arg1] (prepare-args [:read] state pointer relbase)]
     [state (+ 2 pointer) (+ relbase arg1)]))
-
-(defn parse-program
-  [s]
-  (apply vector
-    (map edn/read-string
-      (clojure.string/split s #","))))
 
 (defn execute-program
   [program output input]
@@ -114,6 +88,12 @@
               [new-state new-pointer new-relbase] (opcode state pointer relbase)]
           (recur new-state new-pointer new-relbase))))
     input))
+
+(defn parse-program
+  [s]
+  (apply vector
+    (map edn/read-string
+      (clojure.string/split s #","))))
 
 (defn run-program-string
   [s output input]

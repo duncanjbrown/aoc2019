@@ -33,21 +33,13 @@
 (deftest test-prepare-args
   (testing "position mode"
     (let [state [2 2 1 3]]
-      (is (= [1 2 3] (sut/prepare-args 2 [2 1 3] [:read :read :write] state 0)))))
+      (is (= [1 2 3] (sut/prepare-args [:read :read :write] state 0 0)))))
   (testing "immediate mode"
     (let [state [1002 2 10 3]]
-      (is (= [10 10 3] (sut/prepare-args 1002 [2 10 3] [:read :read :write] state 0)))))
+      (is (= [10 10 3] (sut/prepare-args [:read :read :write] state 0 0)))))
   (testing "relative mode"
     (let [state [2002 2 0 3]]
-      (is (= [0 2002 3] (sut/prepare-args 2002 [2 0 3] [:read :read :write] state 0))))))
-
-(deftest relative-mode
-  (testing "relative base is 0"
-    (is (zero? (sut/dereference-value [0 1 2 3 4] 0 2 0))))
-  (testing "relative base is 1"
-    (is (= 1 (sut/dereference-value [0 1 2 3 4] 1 2 0))))
-  (testing "relative base is -1"
-    (is (= 3 (sut/dereference-value [0 1 2 3 4] -1 2 4)))))
+      (is (= [0 2002 3] (sut/prepare-args [:read :read :write] state 0 0))))))
 
 (deftest set-relative-mode
   (let [prog "9,1,204,0,99"]

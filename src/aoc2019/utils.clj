@@ -37,3 +37,9 @@
        (take-while pos?)
        (mapv #(mod % 10))
        rseq))
+
+(defn zero-pad
+  "Zero-pads a vector v to the right up to a maximum size n"
+  [v n]
+  (if-let [padding (take (- n (count v)) (repeat 0))]
+    (vec (reverse (apply conj (reverse v) padding)))))
