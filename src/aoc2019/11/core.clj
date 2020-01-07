@@ -2,7 +2,8 @@
   (:require [aoc2019.11.computer :as computer]
             [clojure.core.async
              :as a
-             :refer [>! <! >!! <!! go chan close! go-loop]]))
+              :refer [>! <! >!! <!! go chan close! go-loop]]
+            [quil.core :as q]))
 
 (defn paint
   [painted pos colour]
@@ -59,7 +60,7 @@
   (let [i (chan)
         o (chan)]
     (go (computer/run-program-string program o i))
-    (tick [0 0] {:black #{} :white #{}} :n i o)))
+    (tick [0 0] painted :n i o)))
 
 (comment
   (def prog (slurp "day11.txt"))
@@ -68,7 +69,37 @@
   (+ (count (:black p1))
     (count (:white p1)))
 
-  (def p2 (start-robot prog {:black #{} :white #{[0 0]}})))
+  (def p2 (start-robot prog {:black #{} :white #{[0 0]}}))
 
+  (defn draw-points
+    []
+    (q/clear)
+    (q/translate 500 500)
+    (q/scale 6)
+    (q/rotate 0.5)
+    (q/stroke-weight 1)
+    (q/stroke 0 0 0)
+    (doall (map (fn [[x y]]
+                    (q/point x y))
+            (:black p2)))
 
-;2278 too low
+    (q/stroke-weight 1)
+    (q/stroke 255 255 255)
+    (doall (map (fn [[x y]]
+                    (q/point x y))
+                (:white p2))))
+
+  (defn setup
+      []
+      (q/frame-rate 1)
+      (q/pixel-density 1)
+      (q/background 200))
+
+  (q/defsketch example                ;; Define a new sketch named example
+      :title "AOC 2019 Day 11.2"    ;; Set the title of the sketch
+      :settings #(q/smooth 2)             ;; Turn on anti-aliasing
+      :setup setup
+      :draw draw-points                          ;; Specify the draw fn
+      :size [1024 768]
+      :features [:keep-on-top]))
+      ;2278 too low
