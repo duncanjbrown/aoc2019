@@ -48,16 +48,6 @@
 
 ;; part 2
 
-; https://stackoverflow.com/a/40788757
-(defn skimmer
-  "Given a seq of seqs, return a lazy seq of the first element from each,
-  the second element from each, etc"
-  [colls]
-  (lazy-seq
-    (let [ss (keep seq colls)]
-      (when (seq ss)
-        (cons (map first ss) (skimmer (map rest ss)))))))
-
 ;; https://stackoverflow.com/a/6989383
 (defn clockwise-sort
   [[ax ay] [bx by]]
