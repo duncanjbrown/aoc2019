@@ -45,11 +45,11 @@
     (vec (reverse (apply conj (reverse v) padding)))))
 
 ; https://stackoverflow.com/a/40788757
-(defn skimmer
+(defn skim
   "Given a seq of seqs, return a lazy seq of the first element from each,
   the second element from each, etc"
   [colls]
   (lazy-seq
     (let [ss (keep seq colls)]
       (when (seq ss)
-        (cons (map first ss) (skimmer (map rest ss)))))))
+        (cons (map first ss) (skim (map rest ss)))))))
