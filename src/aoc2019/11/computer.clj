@@ -41,7 +41,7 @@
   (fn
     [state pointer relbase]
     (let [[arg1 arg2 out] (prepare-args [:read :read :write] state pointer relbase)]
-        [(assoc state out (f arg1 arg2)) (+ pointer 4) relbase])))
+      [(assoc state out (f arg1 arg2)) (+ pointer 4) relbase])))
 
 (defn jump
   [pred]
@@ -77,7 +77,7 @@
              7 (cmp <)
              8 (cmp =)
              9 setrelbase}]
-    (go-loop [state (zero-pad program 2048)
+    (go-loop [state (zero-pad program 4096)
               pointer 0
               relbase 0]
       (if (= 99 (get state pointer))
